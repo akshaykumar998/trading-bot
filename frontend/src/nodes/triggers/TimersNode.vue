@@ -1,21 +1,22 @@
 <template>
-  <div class="p-4 border">
-    {{ data.metadata.time / 3600 }}
+  <div
+    class="p-3 rounded-md border bg-card text-card-foreground shadow-sm w-44 min-w-[10rem] flex flex-col gap-1"
+  >
+    <div class="text-sm font-medium">Timer</div>
+    <div class="text-xs text-muted-foreground">Every {{ data.time }}s</div>
     <Handle type="source" :position="Position.Right" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { Handle, Position } from '@vue-flow/core'
+import { Handle, Position, type HandleConnectable } from '@vue-flow/core'
 
 export type TimerNodeMetaData = {
   time: number
 }
 
 defineProps<{
-  data: {
-    metadata: TimerNodeMetaData
-  }
-  isConnectable: boolean
+  data: TimerNodeMetaData
+  connectable: HandleConnectable
 }>()
 </script>

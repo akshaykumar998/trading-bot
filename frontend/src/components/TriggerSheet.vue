@@ -1,11 +1,13 @@
 <template>
   <Sheet defaultOpen>
-    <SheetContent>
-      <SheetHeader>
-        <SheetTitle>Select Trigger</SheetTitle>
-        <SheetDescription> Select the type of trigger that you need </SheetDescription>
-        <Select v-model="selectedTrigger" @update="handleSelect">
-          <SelectTrigger class="w-[180px]">
+    <SheetContent class="max-w-md mx-4 my-6">
+      <SheetHeader class="flex flex-col gap-4">
+        <SheetTitle class="text-lg font-semibold">Select Trigger</SheetTitle>
+        <SheetDescription class="text-sm text-muted-foreground">
+          Select the type of trigger that you need
+        </SheetDescription>
+        <Select v-model="selectedTrigger" class="w-full">
+          <SelectTrigger class="w-full">
             <SelectValue placeholder="Select a Trigger" />
           </SelectTrigger>
           <SelectContent>
@@ -20,31 +22,25 @@
             </SelectGroup>
           </SelectContent>
         </Select>
-        <div v-if="selectedTrigger === 'timer'">
+        <div
+          v-if="selectedTrigger === 'timer' && metadata.type === 'timer'"
+          class="mt-2 flex flex-col gap-2"
+        >
           <Label for="timer">Timer</Label>
-          <Input id="timer" type="text" v-model.number="metadata.time"></Input>
+          <Input id="timer" type="text" v-model.number="metadata.time" class="w-full"></Input>
         </div>
-        <div v-if="selectedTrigger === 'price-trigger'">
+        <div
+          v-if="selectedTrigger === 'price-trigger' && metadata.type === 'price-trigger'"
+          class="mt-2 flex flex-col gap-2"
+        >
           <Label for="price">Price</Label>
-          <Input id="price" type="text" v-model.number="metadata.price"></Input>
+          <Input id="price" type="text" v-model.number="metadata.price" class="w-full"></Input>
           <Label for="metadata.asset">Assets</Label>
-          <Select v-model="metadata.asset">
-            <SelectTrigger class="w-[180px]">
-              <SelectValue placeholder="Select a Asset" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectLabel></SelectLabel>
-                <SelectItem v-for="asset in SUPPORTED_ASSETS" :key="asset" :value="asset">
-                  {{ asset }}
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <AssetSelect v-model="metadata.asset" class="w-full"></AssetSelect>
         </div>
       </SheetHeader>
       <SheetFooter>
-        <Button type="submit" @click="createFlow"> Create Flow </Button>
+        <Button type="submit" @click="createFlow" class="w-full"> Create Flow </Button>
       </SheetFooter>
     </SheetContent>
   </Sheet>
@@ -52,7 +48,7 @@
 
 <script setup lang="ts">
 import { Button } from '@/components/ui/button'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type { PriceTriggerMetaData } from '@/nodes/triggers/PriceTrigger.vue'
 import type { TimerNodeMetaData } from '@/nodes/triggers/TimersNode.vue'
 import {
@@ -73,7 +69,7 @@ import {
 } from '@/components/ui/select'
 import Input from './ui/input/Input.vue'
 import Label from './ui/label/Label.vue'
-import SelectLabel from './ui/select/SelectLabel.vue'
+import AssetSelect from './AssetSelect.vue'
 
 const SUPPORTED_TRIGGERS = ref([
   {
@@ -88,30 +84,63 @@ const SUPPORTED_TRIGGERS = ref([
   },
 ])
 
-const selectedTrigger = ref<string>('')
+type NodeKind = 'price-trigger' | 'timer'
 
-const handleSelect = (value: string | null) => {
-  if (value) {
-    selectedTrigger.value = value
-  }
-}
+const selectedTrigger = ref<NodeKind | null>(null)
 
 const emit = defineEmits<{
-  'trigger-selected': [trigger: { id: string; title: string }]
+  'trigger-selected': [
+    payload:
+      | { type: 'timer'; data: TimerNodeMetaData }
+      | { type: 'price-trigger'; data: PriceTriggerMetaData },
+  ]
 }>()
 
-const SUPPORTED_ASSETS = ref(['SOL', 'BTC', 'ETH'])
+type TriggerMetadata =
+  | ({ type: 'timer' } & TimerNodeMetaData)
+  | ({ type: 'price-trigger' } & PriceTriggerMetaData)
 
-const metadata = ref<PriceTriggerMetaData | TimerNodeMetaData>({
-  asset: '',
-  price: 0,
-  decimals: 0,
+const metadata = ref<TriggerMetadata>({
+  type: 'timer',
+  time: 0,
+})
+
+watch(selectedTrigger, (newVal) => {
+  if (!newVal) return
+
+  if (newVal === 'timer') {
+    metadata.value = { type: 'timer', time: 0 }
+  }
+
+  if (newVal === 'price-trigger') {
+    metadata.value = {
+      type: 'price-trigger',
+      asset: 'SOL',
+      price: 0,
+      decimals: 2,
+    }
+  }
 })
 
 const createFlow = () => {
-  const trigger = SUPPORTED_TRIGGERS.value.find((t) => t.id === selectedTrigger.value)
-  if (trigger) {
-    emit('trigger-selected', { id: trigger.id, title: trigger.title })
+  if (selectedTrigger.value === 'timer' && metadata.value.type === 'timer') {
+    emit('trigger-selected', {
+      type: 'timer',
+      data: {
+        time: metadata.value.time,
+      },
+    })
+  }
+
+  if (selectedTrigger.value === 'price-trigger' && metadata.value.type === 'price-trigger') {
+    emit('trigger-selected', {
+      type: 'price-trigger',
+      data: {
+        asset: metadata.value.asset,
+        price: metadata.value.price,
+        decimals: metadata.value.decimals,
+      },
+    })
   }
 }
 </script>
